@@ -36,18 +36,18 @@ OBJS = $(addprefix $(OBJS_DIR), $(addsuffix .o, $(FILES)))
 	@$(CC) $(FLAGS) -c -o $@ $<
 
 $(NAME): $(OBJS)
-		@$(CC) $(FLAGS) $(S) $^ -o $@ 
-		@echo "Preparando Spaguetis"
+	@$(CC) $(FLAGS) $(S) $^ -o $@ -lpthread
+	@echo "Preparando Spaguetis"
 
 all: $(NAME)
 
 clean:
-		@$(RM) $(OBJS)
-		@echo "Recogiendo los platos"
+	@$(RM) $(OBJS)
+	@echo "Recogiendo los platos"
 
 fclean: clean
-		@$(RM) $(NAME)
-		@echo "Tirando Spaguettis de ayer"
+	@$(RM) $(NAME)
+	@echo "Tirando Spaguettis de ayer"
 
 re: clean all
 

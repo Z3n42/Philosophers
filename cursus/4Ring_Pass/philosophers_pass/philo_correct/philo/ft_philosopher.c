@@ -114,4 +114,5 @@ int	main(int argc, char **argv )
 		ft_init(argc, argv);
 	else
 		return (0);
+	return (1);
 }
