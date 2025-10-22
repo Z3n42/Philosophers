@@ -5,7 +5,7 @@
 ### I've never thought philosophy would be so deadly
 
 <p>
-  <img src="https://img.shields.io/badge/Score-125%2F125-success?style=for-the-badge&logo=42" alt="42 Score"/>
+  <img src="https://img.shields.io/badge/Score-125%2F100-success?style=for-the-badge&logo=42" alt="42 Score"/>
   <img src="https://img.shields.io/badge/Language-C-00599C?style=for-the-badge&logo=c&logoColor=white" alt="Language"/>
   <img src="https://img.shields.io/badge/Concurrency-Threads%20%26%20Processes-orange?style=for-the-badge" alt="Concurrency"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"/>
