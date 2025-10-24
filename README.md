@@ -14,7 +14,7 @@
 
 *A multithreading project based on the Dining Philosophers problem - exploring race conditions, deadlocks, and resource sharing through concurrent programming.*
 
-[Installation](#%EF%B8%8F-installation) • [Usage](#-usage) • [The Problem](#-the-dining-philosophers-problem) • [Implementation](#-implementation)
+[Installation](#%EF%B8%8F-installation) • [Usage](#-usage) • [The Problem](#%EF%B8%8F-the-dining-philosophers-problem) • [Implementation](#-implementation) • [Testing](#-testing)
 
 </div>
 
@@ -25,12 +25,12 @@
 - [About the Project](#-about-the-project)
 - [Installation](#%EF%B8%8F-installation)
 - [Usage](#-usage)
-- [The Dining Philosophers Problem](#-the-dining-philosophers-problem)
+- [The Dining Philosophers Problem](#%EF%B8%8F-the-dining-philosophers-problem)
 - [Implementation](#-implementation)
-- [Mandatory vs Bonus](#-mandatory-vs-bonus)
 - [Project Structure](#-project-structure)
 - [Testing](#-testing)
 - [What I Learned](#-what-i-learned)
+- [Requirements](#-requirements)
 - [License](#-license)
 
 ---
@@ -41,15 +41,48 @@
 
 ### Why Philosophers?
 
-This project provides hands-on experience with:
-- **Multithreading** - `pthread_create()`, thread lifecycle management
-- **Mutex Synchronization** - `pthread_mutex_lock/unlock()`, avoiding race conditions
-- **Semaphores** - `sem_wait()`, `sem_post()` for process synchronization
-- **Process Management** - `fork()`, `waitpid()`, inter-process communication
-- **Race Conditions** - Understanding and preventing data races
-- **Deadlock Prevention** - Strategies to avoid circular wait conditions
-- **Timing Precision** - `gettimeofday()`, `usleep()` for microsecond accuracy
-- **Resource Sharing** - Managing limited resources (forks) between concurrent entities
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🧵 Core Concurrency
+- **Multithreading** with `pthread_create()`
+- **Mutex synchronization** for race prevention
+- Thread lifecycle management and joining
+- Shared memory space between threads
+
+</td>
+<td width="50%" valign="top">
+
+### 🔒 Synchronization Primitives
+- **Mutexes** for fork protection (mandatory)
+- **Semaphores** for process sync (bonus)
+- Timing precision with `gettimeofday()`
+- `usleep()` for microsecond accuracy
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🎯 Bonus Features
+- **Process management** with `fork()`
+- **Counting semaphores** for resource pools
+- Inter-process communication
+- Separate address spaces per process
+
+</td>
+<td width="50%" valign="top">
+
+### 🛡️ Problem Prevention
+- **Deadlock prevention** with asymmetric pickup
+- **Race condition** elimination
+- **Starvation prevention** with fair timing
+- Death detection within 10ms
+
+</td>
+</tr>
+</table>
 
 The project requires implementing two versions:
 - **Mandatory**: Threads + Mutexes
@@ -113,26 +146,47 @@ make re
 
 ### Examples
 
-#### Basic Simulation
+<details>
+<summary><b>Basic Simulations</b></summary>
+
 ```bash
 # 5 philosophers, 800ms to die, 200ms to eat, 200ms to sleep
 ./philo 5 800 200 200
+
+# Tight timing (challenging)
+./philo 4 310 200 100
+
+# Should not die
+./philo 4 410 200 200
 ```
 
-#### With Meal Limit
+</details>
+
+<details>
+<summary><b>With Meal Limit</b></summary>
+
 ```bash
 # Stops when each philosopher has eaten 7 times
 ./philo 5 800 200 200 7
+
+# Many meals
+./philo 4 410 200 200 1000
 ```
 
-#### Edge Cases
+</details>
+
+<details>
+<summary><b>Edge Cases</b></summary>
+
 ```bash
-# Single philosopher (should die)
+# Single philosopher (should die - only 1 fork)
 ./philo 1 800 200 200
 
-# Tight timing
-./philo 4 310 200 100
+# Many philosophers (stress test)
+./philo 200 800 200 200
 ```
+
+</details>
 
 ### Output Format
 
@@ -168,10 +222,7 @@ make re
 
 ### The Problem
 
-N philosophers sit around a circular table with N forks. Each philosopher alternates between:
-1. **Thinking** - No resources needed
-2. **Eating** - Needs **2 forks** (left and right)
-3. **Sleeping** - No resources needed
+N philosophers sit around a circular table with N forks. Each philosopher alternates between three states:
 
 ```
         Fork 0
@@ -183,49 +234,68 @@ Fork 1           Fork 4
         Fork 3
 ```
 
+**Philosopher States:**
+1. **Thinking** - No resources needed
+2. **Eating** - Needs **2 forks** (left AND right)
+3. **Sleeping** - No resources needed
+
 ### The Challenges
 
-#### 1. Resource Sharing
-- Only N forks for N philosophers
-- Each philosopher needs 2 forks simultaneously
-- Forks are shared between adjacent philosophers
+<table>
+<tr>
+<th>Challenge</th>
+<th>Description</th>
+<th>Solution</th>
+</tr>
+<tr>
+<td><b>Resource Sharing</b></td>
+<td>Only N forks for N philosophers, each needs 2 simultaneously</td>
+<td>Mutexes/semaphores protect fork access</td>
+</tr>
+<tr>
+<td><b>Deadlock</b></td>
+<td>All philosophers pick right fork → none can get left</td>
+<td>Even/odd pickup strategy breaks circular wait</td>
+</tr>
+<tr>
+<td><b>Starvation</b></td>
+<td>Some philosophers eat repeatedly while others never do</td>
+<td>Continuous death monitoring ensures fairness</td>
+</tr>
+<tr>
+<td><b>Race Conditions</b></td>
+<td>Multiple threads accessing shared death flag</td>
+<td>Dedicated mutex for death printing</td>
+</tr>
+</table>
 
-#### 2. Deadlock
-If all philosophers pick up their right fork simultaneously, none can pick up the left fork → **deadlock**.
+### Solution Strategies
 
-#### 3. Starvation
-Some philosophers might eat repeatedly while others never get a chance → **starvation**.
-
-#### 4. Race Conditions
-Multiple threads accessing shared resources (forks, death flag) without proper synchronization.
-
-### The Solution
-
-The implementation uses several strategies:
-
-**Deadlock Prevention:**
-- Even philosophers pick right fork first
-- Odd philosophers pick left fork first
+#### Deadlock Prevention
+- **Even philosophers**: Pick right fork first
+- **Odd philosophers**: Pick left fork first
 - Breaks circular wait condition
 
-**Starvation Prevention:**
+#### Starvation Prevention
 - Timing checks ensure no philosopher waits too long
 - Death monitoring runs continuously
+- `time_to_die` enforces maximum wait
 
-**Race Condition Prevention:**
+#### Race Condition Prevention
 - Mutexes protect fork access (mandatory)
 - Semaphores control fork availability (bonus)
-- Dedicated mutex for death printing
+- Dedicated mutex/semaphore for death printing
 
 ---
 
 ## 💻 Implementation
 
-### Mandatory Version (Threads + Mutexes)
+### Data Structure
 
-**Architecture:** Each philosopher is a **thread**, forks are protected by **mutexes**.
+The implementation uses a single comprehensive structure:
 
-#### Data Structure
+<details>
+<summary><b>t_ph - Philosopher Structure</b></summary>
 
 ```c
 typedef struct s_ph
@@ -238,20 +308,41 @@ typedef struct s_ph
     long            blood;          // time_to_die value
     long            eat;            // time_to_eat value
     long            sleep;          // time_to_sleep value
-    int             times;          // Times eaten
+    int             times;          // Times eaten so far
     int             max;            // Max times to eat (-1 if infinite)
     int             left;           // Left fork index
     int             right;          // Right fork index
-    int             kill;           // Death flag
+    int             kill;           // Death flag (local)
     int             full;           // Finished eating flag
     int             wait;           // Synchronization flag
     int             print;          // Print synchronization
-    int             *stat;          // Shared death status
-    pthread_mutex_t *mutex;         // Array of fork mutexes
+    int             *stat;          // Shared death status pointer
+    pthread_mutex_t *mutex;         // Array of fork mutexes (mandatory)
+
+    // Bonus-specific fields
+    sem_t           *sem;           // Fork semaphore (bonus)
+    sem_t           *semw;          // Wait semaphore (bonus)
+    sem_t           *semd;          // Death semaphore (bonus)
+    int             *child;         // Child PIDs (bonus)
+    int             status;         // Wait status (bonus)
 }   t_ph;
 ```
 
-#### Main Flow
+**Key Fields:**
+- `life`: Current time for comparison
+- `die`: Calculated death time (life + blood)
+- `born`: Simulation start for timestamps
+- `blood`: time_to_die parameter
+- `stat`: Shared flag to signal death to all threads/processes
+
+</details>
+
+### Mandatory Version (Threads + Mutexes)
+
+**Architecture:** Each philosopher is a **thread**, forks are protected by **mutexes**.
+
+<details>
+<summary><b>Main Flow and Initialization</b></summary>
 
 ```c
 int main(int argc, char **argv)
@@ -272,12 +363,12 @@ void ft_init(int argc, char **argv)
     ph.sleep = ft_atoi(argv[4]);
     ph.max = (argc == 6) ? ft_atoi(argv[5]) : -1;
 
-    // Initialize
+    // Allocate shared resources
     ph.mutex = malloc(ph.num * sizeof(pthread_mutex_t));
     ph.stat = malloc(sizeof(int));
     memset(ph.stat, 0, sizeof(int));
 
-    // Validate
+    // Validate arguments
     if (ph.num < 1 || ph.blood < 1 || ph.eat < 1 || ph.sleep < 1)
         return;
 
@@ -285,7 +376,10 @@ void ft_init(int argc, char **argv)
 }
 ```
 
-#### Thread Creation
+</details>
+
+<details>
+<summary><b>Thread Creation and Synchronization</b></summary>
 
 ```c
 void ft_create(t_ph *ph)
@@ -298,17 +392,19 @@ void ft_create(t_ph *ph)
     while (++i < ph->num)
         pthread_mutex_init(&ph->mutex[i], NULL);
 
-    // Create threads
+    // Create philosopher threads
     thread = malloc(ph->num * sizeof(pthread_t));
     i = -1;
     while (++i < ph->num)
     {
-        pthread_mutex_lock(&ph->mutex[0]);  // Synchronization
+        pthread_mutex_lock(&ph->mutex[0]);  // Synchronization barrier
         ph->id = i + 1;
+        ph->left = i;
+        ph->right = (i + 1) % ph->num;
         pthread_create(&thread[i], NULL, ft_routine, ph);
     }
 
-    // Join threads
+    // Wait for all threads to complete
     i = -1;
     while (++i < ph->num)
         pthread_join(thread[i], NULL);
@@ -324,7 +420,15 @@ void ft_create(t_ph *ph)
 }
 ```
 
-#### Philosopher Routine
+**Synchronization Barrier:**
+- `mutex[0]` locked before each thread creation
+- Each thread unlocks it immediately after copying data
+- Ensures all philosophers start at roughly the same time
+
+</details>
+
+<details>
+<summary><b>Philosopher Thread Routine</b></summary>
 
 ```c
 void *ft_routine(void *tid)
@@ -333,7 +437,7 @@ void *ft_routine(void *tid)
     struct timeval live;
 
     ph = *(t_ph *)tid;
-    pthread_mutex_unlock(&ph.mutex[0]);  // Release sync
+    pthread_mutex_unlock(&ph.mutex[0]);  // Release sync barrier
 
     // Wait for all philosophers to be created
     ft_wait(&ph);
@@ -343,18 +447,22 @@ void *ft_routine(void *tid)
     ph.life = (live.tv_sec * 1000) + (live.tv_usec / 1000);
     ph.die = ph.life + ph.blood;
     ph.born = ph.life;
+    ph.times = 0;
+    ph.kill = 0;
+    ph.wait = 0;
+    ph.print = 0;
 
-    // Main loop
-    while (ph.stat[0] == 0)  // While no one died
+    // Main philosopher loop
+    while (ph.stat[0] == 0)  // While no one has died
     {
-        // Even philosophers wait slightly
+        // Even philosophers wait slightly to prevent deadlock
         if ((ph.id % 2) == 0 && ph.wait == 0)
         {
             ph.wait = 1;
             usleep(1500);
         }
 
-        ft_fk1(&ph);  // Try to eat
+        ft_fk1(&ph);  // Attempt to eat
 
         if (ph.stat[0] == 1)
             break;
@@ -364,14 +472,21 @@ void *ft_routine(void *tid)
 }
 ```
 
-#### Fork Acquisition and Eating
+**Even/Odd Strategy:**
+- Even-numbered philosophers wait 1.5ms before first attempt
+- Creates staggered start to prevent simultaneous fork grabbing
+
+</details>
+
+<details>
+<summary><b>Fork Acquisition and Eating</b></summary>
 
 ```c
 void ft_fk1(t_ph *ph)
 {
     struct timeval take;
 
-    // Lock right fork
+    // Lock right fork first
     pthread_mutex_lock(&ph->mutex[ph->right]);
     gettimeofday(&take, NULL);
     ph->life = (take.tv_sec * 1000) + (take.tv_usec / 1000);
@@ -390,7 +505,7 @@ void ft_fk1(t_ph *ph)
         return;
     }
 
-    // Check death before taking second fork
+    // Check if about to die before taking second fork
     gettimeofday(&take, NULL);
     ph->life = (take.tv_sec * 1000) + (take.tv_usec / 1000);
     if ((ph->die - ph->life) < 0)
@@ -406,11 +521,7 @@ void ft_fk1(t_ph *ph)
 
     ft_eat(ph);
 }
-```
 
-#### Eating
-
-```c
 void ft_eat(t_ph *ph)
 {
     struct timeval eat;
@@ -420,6 +531,7 @@ void ft_eat(t_ph *ph)
         gettimeofday(&eat, NULL);
         ph->life = (eat.tv_sec * 1000) + (eat.tv_usec / 1000);
 
+        // Check death before eating
         if ((ph->die - ph->life) < 0)
             ft_die(ph);
 
@@ -427,7 +539,7 @@ void ft_eat(t_ph *ph)
         {
             printf("%ld %d is eating\n", (ph->life - ph->born), ph->id);
 
-            // Track meals
+            // Track meal count
             if (ph->max != -1)
             {
                 ph->times += 1;
@@ -439,14 +551,14 @@ void ft_eat(t_ph *ph)
         // Wait while eating
         ft_eatime(ph);
 
-        // Update death time
+        // Update death deadline after eating
         gettimeofday(&eat, NULL);
         ph->life = (eat.tv_sec * 1000) + (eat.tv_usec / 1000);
         ph->die = ph->life + ph->blood;
         ph->print = 0;
     }
 
-    // Release forks
+    // Release both forks
     pthread_mutex_unlock(&ph->mutex[ph->right]);
     pthread_mutex_unlock(&ph->mutex[ph->left]);
 
@@ -454,7 +566,15 @@ void ft_eat(t_ph *ph)
 }
 ```
 
-#### Death Detection
+**Critical Death Checks:**
+- Before taking second fork
+- Before printing "is eating"
+- Ensures death detected within 10ms requirement
+
+</details>
+
+<details>
+<summary><b>Death Detection</b></summary>
 
 ```c
 void ft_die(t_ph *ph)
@@ -467,7 +587,7 @@ void ft_die(t_ph *ph)
 
     if (ph->kill == 0 && ph->stat[0] == 0)
     {
-        ph->stat[0] = 1;  // Signal all threads
+        ph->stat[0] = 1;  // Signal all threads to stop
         ph->kill = 1;
 
         gettimeofday(&die, NULL);
@@ -482,39 +602,84 @@ void ft_die(t_ph *ph)
 }
 ```
 
----
+**Race Prevention:**
+- Temporary mutex prevents multiple death messages
+- `stat[0]` shared flag stops all threads
+- Only first death is printed
+
+</details>
 
 ### Bonus Version (Processes + Semaphores)
 
 **Architecture:** Each philosopher is a **process**, forks are a **counting semaphore**.
 
-#### Key Differences
+<details>
+<summary><b>Mandatory vs Bonus Comparison</b></summary>
 
-| Aspect | Mandatory | Bonus |
-|--------|-----------|-------|
-| **Concurrency Unit** | Threads | Processes |
-| **Synchronization** | Mutexes | Semaphores |
-| **Fork Representation** | Individual mutexes | Counting semaphore |
-| **Memory** | Shared memory space | Separate address spaces |
-| **Creation** | `pthread_create()` | `fork()` |
-| **Termination** | `pthread_join()` | `waitpid()` |
+<table>
+<tr>
+<th>Aspect</th>
+<th>Mandatory</th>
+<th>Bonus</th>
+</tr>
+<tr>
+<td><b>Concurrency Unit</b></td>
+<td>Threads (<code>pthread_t</code>)</td>
+<td>Processes (<code>fork()</code>)</td>
+</tr>
+<tr>
+<td><b>Synchronization</b></td>
+<td>Mutexes (<code>pthread_mutex_t</code>)</td>
+<td>Semaphores (<code>sem_t</code>)</td>
+</tr>
+<tr>
+<td><b>Fork Representation</b></td>
+<td>Individual mutex per fork</td>
+<td>Counting semaphore (N resources)</td>
+</tr>
+<tr>
+<td><b>Memory Space</b></td>
+<td>Shared memory</td>
+<td>Separate address spaces</td>
+</tr>
+<tr>
+<td><b>Creation Function</b></td>
+<td><code>pthread_create()</code></td>
+<td><code>fork()</code></td>
+</tr>
+<tr>
+<td><b>Waiting Function</b></td>
+<td><code>pthread_join()</code></td>
+<td><code>waitpid()</code></td>
+</tr>
+<tr>
+<td><b>Death Signaling</b></td>
+<td>Shared <code>stat[0]</code> flag</td>
+<td>Exit status (exit code 1)</td>
+</tr>
+</table>
 
-#### Semaphore Setup
+</details>
+
+<details>
+<summary><b>Semaphore Setup (Bonus)</b></summary>
 
 ```c
 void ft_create(t_ph *ph)
 {
-    // Unlink previous semaphores
+    // Unlink any previous semaphores
     sem_unlink("forks");
     sem_unlink("wait");
     sem_unlink("die");
 
-    // Create semaphores
-    ph->semd = sem_open("die", O_CREAT, 0644, 1);       // Death mutex
-    ph->semw = sem_open("wait", O_CREAT, 0644, 0);     // Sync semaphore
+    // Create named semaphores
+    ph->semd = sem_open("die", O_CREAT, 0644, 1);        // Death mutex
+    ph->semw = sem_open("wait", O_CREAT, 0644, 0);      // Sync semaphore
     ph->sem = sem_open("forks", O_CREAT, 0644, ph->num); // Fork pool
 
-    ft_alive(ph);  // Create processes
+    ph->child = malloc((ph->num + 1) * sizeof(int));
+
+    ft_alive(ph);  // Create philosopher processes
 
     // Cleanup
     sem_close(ph->sem);
@@ -528,7 +693,15 @@ void ft_create(t_ph *ph)
 }
 ```
 
-#### Process Creation
+**Semaphore Purposes:**
+- `forks`: Counting semaphore initialized to N (fork pool)
+- `die`: Binary semaphore for death message protection
+- `wait`: Synchronization barrier for process startup
+
+</details>
+
+<details>
+<summary><b>Process Creation (Bonus)</b></summary>
 
 ```c
 void ft_alive(t_ph *ph)
@@ -541,8 +714,10 @@ void ft_alive(t_ph *ph)
         if (pid != 0)
         {
             ph->id = i + 1;
+            ph->left = i;
+            ph->right = (i + 1) % ph->num;
             pid = fork();
-            ph->child[i] = pid;  // Store child PIDs
+            ph->child[i] = pid;  // Store child PID
         }
         else
             ft_routine(ph);  // Child process executes routine
@@ -556,20 +731,40 @@ void ft_alive(t_ph *ph)
         {
             waitpid(-1, &ph->status, 0);
             if (ph->status != 0)  // A philosopher died
-                ft_kill(ph);      // Kill all processes
+                ft_kill(ph);      // Kill all other processes
         }
+    }
+}
+
+void ft_kill(t_ph *ph)
+{
+    int i = -1;
+
+    while (++i <= ph->num)
+    {
+        if (ph->child[i] > 0)
+            kill(ph->child[i], SIGKILL);
     }
 }
 ```
 
-#### Fork Acquisition (Bonus)
+**Process Management:**
+- Parent forks N child processes
+- Each child runs philosopher routine
+- Parent waits for any child to exit
+- If one dies (status ≠ 0), kill all others
+
+</details>
+
+<details>
+<summary><b>Fork Acquisition with Semaphores (Bonus)</b></summary>
 
 ```c
 void ft_fk1(t_ph *ph)
 {
     struct timeval take;
 
-    // Wait for fork from semaphore pool
+    // Wait for fork from pool
     sem_wait(ph->sem);
     gettimeofday(&take, NULL);
     ph->life = (take.tv_sec * 1000) + (take.tv_usec / 1000);
@@ -604,7 +799,15 @@ void ft_fk1(t_ph *ph)
 }
 ```
 
-#### Death (Bonus)
+**Counting Semaphore Logic:**
+- `sem_wait()` decrements available forks
+- If count = 0, process blocks until fork available
+- `sem_post()` increments after releasing fork
+
+</details>
+
+<details>
+<summary><b>Death Handling (Bonus)</b></summary>
 
 ```c
 void ft_die(t_ph *ph)
@@ -622,6 +825,13 @@ void ft_die(t_ph *ph)
 }
 ```
 
+**Key Difference:**
+- Uses `exit(1)` instead of shared flag
+- Parent detects death via `waitpid()` status
+- Triggers `ft_kill()` to terminate all siblings
+
+</details>
+
 ---
 
 ## 📁 Project Structure
@@ -631,15 +841,16 @@ philosophers/
 ├── 📂 philo/                    # Mandatory (Threads + Mutexes)
 │   ├── 📄 Makefile
 │   ├── 📄 ft_philo.h           # Header with t_ph structure
-│   ├── 📄 ft_philosopher.c     # Main, init, thread creation
-│   ├── 📄 ft_routine.c         # Thread routine and synchronization
-│   └── 📄 ft_eat.c             # Eating, sleeping, death logic
+│   ├── 📄 ft_philosopher.c     # Main, init, thread creation (~120 lines)
+│   ├── 📄 ft_routine.c         # Thread routine, synchronization (~80 lines)
+│   └── 📄 ft_eat.c             # Eating, sleeping, death logic (~180 lines)
+│
 └── 📂 philo_bonus/              # Bonus (Processes + Semaphores)
     ├── 📄 Makefile
     ├── 📄 ft_philo_bonus.h     # Header with t_ph structure
-    ├── 📄 ft_philosopher_bonus.c # Main, init, process creation
-    ├── 📄 ft_routine_bonus.c   # Process routine and synchronization
-    └── 📄 ft_eat_bonus.c       # Eating, sleeping, death logic
+    ├── 📄 ft_philosopher_bonus.c # Main, init, process creation (~110 lines)
+    ├── 📄 ft_routine_bonus.c   # Process routine, fork management (~90 lines)
+    └── 📄 ft_eat_bonus.c       # Eating, sleeping, death logic (~170 lines)
 ```
 
 ### File Breakdown
@@ -647,12 +858,12 @@ philosophers/
 | File | Lines | Purpose |
 |------|-------|---------|
 | **Mandatory** | | |
-| `ft_philosopher.c` | ~120 | Argument parsing, initialization, thread creation |
-| `ft_routine.c` | ~80 | Thread routine, synchronization barrier |
+| `ft_philosopher.c` | ~120 | Argument parsing, initialization, thread creation, join |
+| `ft_routine.c` | ~80 | Thread routine, synchronization barrier, wait logic |
 | `ft_eat.c` | ~180 | Fork acquisition, eating, sleeping, death detection |
 | **Bonus** | | |
-| `ft_philosopher_bonus.c` | ~110 | Argument parsing, initialization, semaphore setup |
-| `ft_routine_bonus.c` | ~90 | Process routine, process creation, waiting |
+| `ft_philosopher_bonus.c` | ~110 | Argument parsing, semaphore setup, cleanup |
+| `ft_routine_bonus.c` | ~90 | Process creation, waiting, killing processes |
 | `ft_eat_bonus.c` | ~170 | Fork acquisition with semaphores, eating, death |
 
 ### Makefile
@@ -665,76 +876,92 @@ FILES = ft_philosopher ft_routine ft_eat
 OBJS = $(FILES:=.o)
 
 $(NAME): $(OBJS)
-    $(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@
 
 all: $(NAME)
 
 clean:
-    $(RM) $(OBJS)
+	$(RM) $(OBJS)
 
 fclean: clean
-    $(RM) $(NAME)
+	$(RM) $(NAME)
 
 re: fclean all
+
+.PHONY: all clean fclean re
 ```
 
 ---
 
 ## 🧪 Testing
 
-### Basic Tests
+### Test Categories
 
-```bash
-# Should not die
-./philo 5 800 200 200
-./philo 4 410 200 200
-
-# Should die
-./philo 4 310 200 100
-
-# With meal limit (should stop)
-./philo 5 800 200 200 7
-
-# Edge case: single philosopher (should die)
-./philo 1 800 200 200
-
-# Many philosophers
-./philo 200 800 200 200
-```
+<table>
+<tr>
+<th>Category</th>
+<th>Command</th>
+<th>Expected Result</th>
+</tr>
+<tr>
+<td><b>Should Not Die</b></td>
+<td><code>./philo 5 800 200 200</code></td>
+<td>Runs indefinitely without death</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><code>./philo 4 410 200 200</code></td>
+<td>Tight timing but survives</td>
+</tr>
+<tr>
+<td><b>Should Die</b></td>
+<td><code>./philo 4 310 200 100</code></td>
+<td>Philosopher dies (time_to_die too short)</td>
+</tr>
+<tr>
+<td><b>Meal Limit</b></td>
+<td><code>./philo 5 800 200 200 7</code></td>
+<td>Stops after all eat 7 times</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><code>./philo 4 410 200 200 1000</code></td>
+<td>Long duration with meal tracking</td>
+</tr>
+<tr>
+<td><b>Edge Cases</b></td>
+<td><code>./philo 1 800 200 200</code></td>
+<td>Dies immediately (only 1 fork)</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><code>./philo 200 800 200 200</code></td>
+<td>Stress test with many philosophers</td>
+</tr>
+</table>
 
 ### Validation Criteria
 
-✅ **No Data Races**:
+#### No Data Races
 ```bash
 # Compile with thread sanitizer
 gcc -g -fsanitize=thread -pthread *.c -o philo
 ./philo 5 800 200 200
 ```
 
-✅ **No Death Delay**:
-- Death must be printed within 10ms of actual death time
-- Monitor timestamps carefully
+#### Death Timing
+- Death must be printed **within 10ms** of actual death time
+- Monitor timestamps: `time_of_death - time_last_ate ≤ time_to_die + 10ms`
 
-✅ **No Message Interleaving**:
+#### No Message Interleaving
 - Each message on its own line
 - No mixed philosopher IDs in single line
+- Proper mutex/semaphore protection of printf
 
-✅ **Deadlock Prevention**:
+#### Deadlock Prevention
 - Program should never hang
-- All philosophers should get turns
-
-### Performance Tests
-
-```bash
-# Stress test
-./philo 200 800 200 200
-
-# Tight timing
-./philo 4 310 200 100
-
-# Long duration
-./philo 4 410 200 200 1000
-```
+- All philosophers should eventually get turns
+- Even/odd strategy prevents circular wait
 
 ### Test Script
 
@@ -744,17 +971,36 @@ gcc -g -fsanitize=thread -pthread *.c -o philo
 echo "=== Test 1: Basic (should not die) ==="
 timeout 10 ./philo 5 800 200 200
 
-echo "=== Test 2: Death case ==="
+echo "\n=== Test 2: Death case ==="
 ./philo 4 310 200 100
 
-echo "=== Test 3: Single philosopher ==="
+echo "\n=== Test 3: Single philosopher ==="
 ./philo 1 800 200 200
 
-echo "=== Test 4: Meal limit ==="
+echo "\n=== Test 4: Meal limit ==="
 ./philo 5 800 200 200 7
 
-echo "=== Test 5: Many philosophers ==="
+echo "\n=== Test 5: Many philosophers ==="
 timeout 5 ./philo 200 800 200 200
+
+echo "\n=== Test 6: Tight timing ==="
+timeout 10 ./philo 4 410 200 200
+```
+
+### Performance Tests
+
+```bash
+# Stress test
+./philo 200 800 200 200
+
+# Very tight timing
+./philo 4 310 200 100
+
+# Long duration
+timeout 60 ./philo 4 410 200 200 1000
+
+# Many meals
+./philo 5 800 200 200 100
 ```
 
 ---
@@ -763,54 +1009,95 @@ timeout 5 ./philo 200 800 200 200
 
 Through this project, deep understanding was gained in:
 
-- ✅ **Thread Management**: `pthread_create()`, `pthread_join()`, `pthread_detach()`
+- ✅ **Thread Management**: `pthread_create()`, `pthread_join()`, `pthread_detach()`, lifecycle
 - ✅ **Mutex Synchronization**: `pthread_mutex_lock/unlock()`, protecting shared data
 - ✅ **Semaphore Usage**: `sem_open()`, `sem_wait()`, `sem_post()`, counting semaphores
 - ✅ **Process Management**: `fork()`, `waitpid()`, `kill()`, process lifecycles
-- ✅ **Race Conditions**: Identifying and preventing data races
-- ✅ **Deadlock Prevention**: Breaking circular wait conditions
-- ✅ **Timing Precision**: `gettimeofday()`, `usleep()`, millisecond accuracy
+- ✅ **Race Conditions**: Identifying and preventing data races with synchronization
+- ✅ **Deadlock Prevention**: Breaking circular wait with asymmetric resource acquisition
+- ✅ **Timing Precision**: `gettimeofday()`, `usleep()`, millisecond-level accuracy
 - ✅ **Resource Sharing**: Managing limited resources between concurrent entities
-- ✅ **Starvation Prevention**: Ensuring fair access to resources
-- ✅ **Synchronization Barriers**: Coordinating thread/process startup
+- ✅ **Starvation Prevention**: Ensuring fair access through continuous monitoring
+- ✅ **Synchronization Barriers**: Coordinating thread/process startup timing
 
 ### Key Challenges
 
-1. **Death Detection Timing**: Ensuring death is detected and printed within 10ms
-2. **Deadlock Prevention**: Implementing asymmetric fork pickup strategy
-3. **Race Condition on Death**: Protecting death printing with mutex/semaphore
-4. **Single Philosopher Edge Case**: Handling case where only 1 fork exists
-5. **Meal Counter**: Tracking when all philosophers have eaten enough times
-6. **Print Synchronization**: Preventing message interleaving
-7. **Process vs Thread**: Understanding memory sharing differences
-8. **Semaphore Cleanup**: Properly unlinking named semaphores
+<table>
+<tr>
+<th>Challenge</th>
+<th>Solution Implemented</th>
+</tr>
+<tr>
+<td><b>Death Detection Timing</b></td>
+<td>Continuous checks before fork pickup, before eating, during sleeping. Ensures ≤10ms detection.</td>
+</tr>
+<tr>
+<td><b>Deadlock Prevention</b></td>
+<td>Even/odd fork pickup strategy: even philosophers pick right first, odd pick left first.</td>
+</tr>
+<tr>
+<td><b>Race on Death Flag</b></td>
+<td>Dedicated mutex (mandatory) or semaphore (bonus) protects death message printing.</td>
+</tr>
+<tr>
+<td><b>Single Philosopher</b></td>
+<td>Special case: only 1 fork exists, philosopher waits then dies. <code>if (ph->num == 1)</code></td>
+</tr>
+<tr>
+<td><b>Meal Counter</b></td>
+<td>Track <code>ph->times</code>, signal when all reach <code>ph->max</code> via <code>ft_maxtimes()</code></td>
+</tr>
+<tr>
+<td><b>Print Synchronization</b></td>
+<td>Mutex/semaphore around printf prevents interleaved output from multiple threads/processes.</td>
+</tr>
+<tr>
+<td><b>Process vs Thread Memory</b></td>
+<td>Bonus uses separate address spaces - can't share pointers directly, uses semaphores.</td>
+</tr>
+<tr>
+<td><b>Semaphore Cleanup</b></td>
+<td><code>sem_unlink()</code> removes named semaphores, prevents resource leaks.</td>
+</tr>
+</table>
 
 ### Design Decisions
 
-**Why even/odd fork pickup?**
+**Why even/odd fork pickup order?**
 - Breaks circular wait condition
-- Simple to implement
-- Prevents deadlock effectively
+- Simple to implement: `if (ph->id % 2) == 0`
+- Prevents all philosophers grabbing same side simultaneously
+- Deadlock-free guarantee
 
 **Why continuous death checks?**
-- Ensures death detected within 10ms
+- Ensures detection within 10ms requirement
 - Checked before fork pickup
-- Checked during eating and sleeping
+- Checked before eating
+- Checked during sleep/think transitions
 
-**Why separate death mutex?**
-- Prevents death message interleaving
-- Critical for clean output
+**Why separate death mutex/semaphore?**
+- Prevents interleaved death messages
+- Critical for clean output validation
 - Minimal performance impact
+- Only used when death occurs
 
-**Why usleep(100) in timing loops?**
-- Reduces CPU usage
-- Still provides millisecond precision
-- Balances accuracy and efficiency
+**Why usleep(1500) for even philosophers?**
+- Creates staggered start
+- Reduces initial contention
+- Simple deadlock prevention
+- 1.5ms negligible delay
 
-**Why fork pickup order differs?**
-- Even philosophers: right→left
-- Odd philosophers: left→right (default)
-- Prevents all picking same side simultaneously
+**Why fork pickup differs by philosopher?**
+- Even: right → left
+- Odd: left → right (or vice versa)
+- Ensures not all pick same fork first
+- Provably deadlock-free
+
+**Why counting semaphore for forks (bonus)?**
+- Models central fork pool naturally
+- Simpler than individual semaphores
+- Automatic resource management
+- OS handles blocking/unblocking
 
 ---
 
@@ -820,18 +1107,20 @@ Through this project, deep understanding was gained in:
 
 - ✅ Each philosopher is a thread
 - ✅ One fork between each philosopher (N forks for N philosophers)
-- ✅ Forks protected by mutexes
-- ✅ Avoid philosophers dying
+- ✅ Forks protected by mutexes (one mutex per fork)
+- ✅ Avoid philosophers dying (unless time_to_die is too short)
 - ✅ No data races
-- ✅ Death printed within 10ms
+- ✅ Death printed within 10ms of occurrence
 - ✅ No message interleaving
+- ✅ Program arguments validated
 
 ### Bonus
 
 - ✅ Each philosopher is a process
 - ✅ All forks in center of table
-- ✅ Forks represented by semaphore
-- ✅ Main process not a philosopher
+- ✅ Forks represented by counting semaphore (value = N)
+- ✅ Main process not a philosopher (parent waits, children execute)
+- ✅ Same behavior as mandatory version
 
 ### Allowed Functions
 
@@ -861,6 +1150,7 @@ This project is part of the 42 School curriculum. Feel free to use and learn fro
 Skills learned here apply to:
 - **Minishell** - Signal handling, process management
 - **ft_server** - Concurrent request handling
+- **webserv** - Multi-threaded server architecture
 - Future multi-threaded/multi-process projects
 
 ---
